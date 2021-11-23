@@ -10,9 +10,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 // Set server port
-HTTP_PORT = 5000;
+var HTTP_PORT = 5000;
 // Start server
-const server = app.listen(HTTP_PORT, () => {
+app.listen(HTTP_PORT, () => {
   console.log("Server running on port %PORT%".replace("%PORT%", HTTP_PORT));
 });
 // READ (HTTP method GET) at root endpoint /app/
@@ -38,14 +38,15 @@ app.get("/app/users", (req, res) => {
 });
 // READ a single user (HTTP method GET) at endpoint /app/user/:id
 app.get("/app/user/:id", (req, res) => {
-  const stmt = db.prepare("SELECT * FROM userinfo WHERE id = ?");
-  const info = stmt.get(req.params.id);
-  res.status(200).json(info);
+  const stmt = db
+    .prepare("SELECT * FROM userinfo WHERE id = ?")
+    .get(req.params.id);
+  res.status(200).json(stmt);
 });
 // UPDATE a single user (HTTP method PATCH) at endpoint /app/update/user/:id
 app.patch("/app/update/user/:id", (req, res) => {
   const stmt = db.prepare(
-    "UPDATE userinfo SET user = COALESCE(?, user), pass = COALESCE(?,pass) WHERE id =?"
+    "UPDATE userinfo SET user = COALESCE(?,user), pass = COALESCE(?,pass) WHERE id =?"
   );
   const info = stmt.run(req.body.user, md5(req.body.pass), req.params.id);
   res.status(200).json({
@@ -67,8 +68,8 @@ app.use(function (req, res) {
 });
 
 // Tell STOUT that the server is stopped
-process.on("SIGTERM", () => {
-  server.close(() => {
-    console.log("Server stopped.");
-  });
-});
+// process.on("SIGTERM", () => {
+//   server.close(() => {
+//     console.log("Server stopped.");
+//   });
+// });
