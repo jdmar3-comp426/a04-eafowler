@@ -5,10 +5,19 @@ var app = express();
 var db = require("./database.js");
 // Require md5 MODULE
 var md5 = require("md5");
+var bodyParser = require("body-parser");
 // Make Express use its own built-in body parser
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
-
+// app.use(express.urlencoded({ extended: true }));
+// app.use(express.json());
+app.use(
+  session({
+    secret: "secret",
+    resave: true,
+    saveUninitialized: true,
+  })
+);
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
 // Set server port
 var HTTP_PORT = 5000;
 // Start server
@@ -24,12 +33,42 @@ app.get("/app/", (req, res, next) => {
 // Define other CRUD API endpoints using express.js and better-sqlite3
 // CREATE a new user (HTTP method POST) at endpoint /app/new/
 app.post("/app/new/", (req, res) => {
-  const stmt = db.prepare("INSERT INTO userinfo (user, pass) VALUES (?, ?)");
-  const info = stmt.run(req.body.user, md5(req.body.pass));
+  const stmt = db.prepare(
+    "INSERT INTO userinfo (user, pass, currStep, bestStep, game) VALUES (?, ?, ?, ?, ?)"
+  );
+  const info = stmt.run(
+    req.body.user,
+    md5(req.body.pass),
+    req.body.currStep,
+    req.body.bestStep,
+    req.body.game
+  );
   res.status(201).json({
     message:
       info.changes + " record created: ID " + info.lastInsertRowid + " (201)",
   });
+});
+
+app.post("/app/auth", function (req, res) {
+  var username = req.body.user;
+  var password = req.body.pass;
+  if (username && password) {
+    try {
+      const row = db
+        .prepare("SELECT * FROM userinfo WHERE user = ? AND pass = ?")
+        .get(req.body.user, req.body.pass);
+      req.session.loggedin = true;
+      req.session.user = username;
+      res.redirect("/home");
+      res.end();
+    } catch (err) {
+      res.send("Username or Password incorrect!");
+      res.end();
+    }
+  } else {
+    res.send("Please enter a Username and Password");
+    res.end();
+  }
 });
 // READ a list of all users (HTTP method GET) at endpoint /app/users/
 app.get("/app/users", (req, res) => {
@@ -46,9 +85,16 @@ app.get("/app/user/:id", (req, res) => {
 // UPDATE a single user (HTTP method PATCH) at endpoint /app/update/user/:id
 app.patch("/app/update/user/:id", (req, res) => {
   const stmt = db.prepare(
-    "UPDATE userinfo SET user = COALESCE(?,user), pass = COALESCE(?,pass) WHERE id =?"
+    "UPDATE userinfo SET user = COALESCE(?,user), pass = COALESCE(?,pass), currStep = COALESCE(?, currStep), bestStep = COALESCE(?, bestStep), game = COALESCE(?, game) WHERE id =?"
   );
-  const info = stmt.run(req.body.user, md5(req.body.pass), req.params.id);
+  const info = stmt.run(
+    req.body.user,
+    md5(req.body.pass),
+    req.body.currStep,
+    req.body.bestStep,
+    req.body.game,
+    req.params.id
+  );
   res.status(200).json({
     message: info.changes + " record updated: ID " + req.params.id + " (200)",
   });
